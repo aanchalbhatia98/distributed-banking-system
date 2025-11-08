@@ -22,7 +22,6 @@ services:
     restart: on-failure
     ports:
       - "8080:8080"
-    # --- FIX: Changed working_dir from /app/src to /app ---
     working_dir: /app 
     environment:
       # Pass required environment variables from the .env file
@@ -32,5 +31,15 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
       PORT: ${PORT}
+    depends_on:
+      - db
+      
+  # 3. Database Viewer (Adminer) Container - NEW SERVICE!
+  adminer:
+    image: adminer:latest
+    container_name: db_viewer
+    restart: always
+    ports:
+      - "8081:8080" # Maps container port 8080 to host port 8081
     depends_on:
       - db
