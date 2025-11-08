@@ -209,3 +209,85 @@ paths:
                 $ref: '#/components/schemas/EligibilityResponse'
         '404':
           description: Account not found
+
+/accounts/{accountId}/debit:
+    post:
+      summary: Atomically debits a specific amount from an account balance.
+      description: |
+        Used by the Transaction Service to move funds out of an account. 
+        Enforces two business rules atomically: 1) Account must be 'ACTIVE'. 
+        2) Account balance must be sufficient for the debit amount.
+      operationId: debitAccount
+      tags:
+        - Funds Movement
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The unique ID of the account to debit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                  format: float
+                  example: 15000.00
+              required:
+                - amount
+      responses:
+        '200':
+          description: Debit successful. Returns the updated account details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+              example:
+                account_id: 767059cd-e802-4211-b1b0-35af750f4250
+                customer_id: 123e4567-e89b-12d3-a456-426614174000
+                account_number: '98765432101234567890'
+                account_type: SAVINGS
+                balance: '35000.5000' # Balance reduced by 15000
+                currency: INR
+                status: ACTIVE
+                daily_transfer_limit: '200000.0000'
+                created_at: 2025-11-08T10:39:00.000Z
+                updated_at: 2025-11-08T10:45:00.000Z
+        '400':
+          description: Invalid input (e.g., non-positive amount, invalid UUID).
+        '403':
+          description: Forbidden - Business Rule Violation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  is_eligible:
+                    type: boolean
+                    example: false
+                  error_code:
+                    type: string
+                    description: Specific code for the failure reason (e.g., INSUFFICIENT_FUNDS).
+                  message:
+                    type: string
+              examples:
+                InsufficientFunds:
+                  value:
+                    is_eligible: false
+                    error_code: INSUFFICIENT_FUNDS
+                    message: Transaction failed: Insufficient funds in account.
+                FrozenAccount:
+                  value:
+                    is_eligible: false
+                    error_code: FROZEN_ACCOUNT
+                    message: Transaction failed: Account is currently FROZEN and cannot be debited.
+        '404':
+          description: Account not found.
+        '500':
+          description: Internal server error.
