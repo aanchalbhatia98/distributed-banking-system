@@ -1,0 +1,211 @@
+openapi: 3.0.3
+info:
+  title: Accounting Service API
+  description: |
+    Manages customer accounts, including creation, status changes, and eligibility checks.
+    This service is the source of truth for account balances and status.
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: Production/Development Server Path
+
+components:
+  schemas:
+    Account:
+      type: object
+      properties:
+        account_id:
+          type: string
+          format: uuid
+          description: Unique identifier for the account (PK).
+        customer_id:
+          type: string
+          format: uuid
+          description: Logical FK to the Customer Service.
+        account_number:
+          type: string
+          description: Unique 20-digit bank account number.
+        account_type:
+          type: string
+          enum: [SAVINGS, CHECKING, LOAN]
+          description: Type of the account.
+        balance:
+          type: number
+          format: double
+          description: Current account balance. Stored as DECIMAL(19, 4) in DB.
+        currency:
+          type: string
+          default: INR
+        status:
+          type: string
+          enum: [ACTIVE, FROZEN, CLOSED]
+          default: ACTIVE
+        daily_transfer_limit:
+          type: number
+          format: double
+          description: Maximum amount allowed for daily transfers (Business Rule).
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    EligibilityResponse:
+      type: object
+      properties:
+        is_eligible:
+          type: boolean
+          description: True if the account can proceed with a transaction.
+        account_status:
+          type: string
+          enum: [ACTIVE, FROZEN, CLOSED]
+        available_balance:
+          type: number
+          format: double
+        daily_limit:
+          type: number
+          format: double
+        error_code:
+          type: string
+          nullable: true
+          description: Code indicating the reason for ineligibility (e.g., FROZEN_ACCOUNT).
+        message:
+          type: string
+          description: Human-readable message.
+
+paths:
+  /accounts:
+    post:
+      summary: Create a new bank account
+      operationId: createAccount
+      tags:
+        - Accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - customer_id
+                - account_type
+                - account_number
+              properties:
+                customer_id:
+                  type: string
+                  format: uuid
+                  example: 123e4567-e89b-12d3-a456-426614174000
+                account_type:
+                  type: string
+                  enum: [SAVINGS, CHECKING]
+                  example: SAVINGS
+                account_number:
+                  type: string
+                  example: '98765432101234567890'
+                initial_deposit:
+                  type: number
+                  format: double
+                  default: 0
+      responses:
+        '201':
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '400':
+          description: Missing required fields
+        '409':
+          description: Account number already exists
+
+  /accounts/{accountId}:
+    get:
+      summary: Fetch account details by ID
+      operationId: getAccountById
+      tags:
+        - Accounts
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: f0e31b81-a9f8-4b7c-8d1e-289b88a7b8e2
+      responses:
+        '200':
+          description: Account found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '404':
+          description: Account not found
+
+  /accounts/{accountId}/status:
+    put:
+      summary: Update account status (e.g., Freeze or Close)
+      operationId: updateAccountStatus
+      tags:
+        - Accounts
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [ACTIVE, FROZEN, CLOSED]
+                  example: FROZEN
+      responses:
+        '200':
+          description: Status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '400':
+          description: Invalid status provided
+        '404':
+          description: Account not found
+
+  /accounts/{accountId}/check-transaction-eligibility:
+    post:
+      summary: Check if an account is eligible for transactions (e.g., not frozen)
+      operationId: checkTransactionEligibility
+      tags:
+        - Business Rules
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Account is eligible or ineligible (details in body)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EligibilityResponse'
+        '403':
+          description: Account status blocks transaction (e.g., Frozen)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EligibilityResponse'
+        '404':
+          description: Account not found

@@ -1,0 +1,36 @@
+services:
+  # 1. PostgreSQL Database Container
+  db:
+    image: postgres:14
+    container_name: accounting_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432" # Expose the DB port for local access if needed
+    volumes:
+      - ./database:/docker-entrypoint-initdb.d # Runs schema.sql on first start
+
+  # 2. Node.js Accounting Service Container
+  accounting-service:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: accounting_service_app
+    restart: on-failure
+    ports:
+      - "8080:8080"
+    # --- FIX: Changed working_dir from /app/src to /app ---
+    working_dir: /app 
+    environment:
+      # Pass required environment variables from the .env file
+      DB_HOST: db # Service name within the docker network
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      PORT: ${PORT}
+    depends_on:
+      - db
