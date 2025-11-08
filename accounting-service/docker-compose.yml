@@ -43,3 +43,17 @@ services:
       - "8081:8080" # Maps container port 8080 to host port 8081
     depends_on:
       - db
+# 4. API Documentation Viewer (Swagger UI)
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    restart: always
+    environment:
+      # Tell Swagger UI to load the spec from the mounted file
+      SWAGGER_JSON: /app/api/openapi.yaml
+    ports:
+      - "8082:8080" # Swagger UI runs on 8080 inside the container
+    volumes:
+      # Mount the local openapi.yaml into the container
+      - ./api/openapi.yaml:/app/api/openapi.yaml
+    depends_on:
+      - accounting-service

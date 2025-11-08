@@ -1,4 +1,4 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
   title: Accounting Service API
   description: |
@@ -30,8 +30,7 @@ components:
           enum: [SAVINGS, CHECKING, LOAN]
           description: Type of the account.
         balance:
-          type: number
-          format: double
+          type: string # Changed from number/double for high precision (matches DECIMAL(19, 4) in DB)
           description: Current account balance. Stored as DECIMAL(19, 4) in DB.
         currency:
           type: string
@@ -41,8 +40,7 @@ components:
           enum: [ACTIVE, FROZEN, CLOSED]
           default: ACTIVE
         daily_transfer_limit:
-          type: number
-          format: double
+          type: string # Changed from number/double for high precision
           description: Maximum amount allowed for daily transfers (Business Rule).
         created_at:
           type: string
@@ -61,11 +59,9 @@ components:
           type: string
           enum: [ACTIVE, FROZEN, CLOSED]
         available_balance:
-          type: number
-          format: double
+          type: string # Changed from number/double for high precision
         daily_limit:
-          type: number
-          format: double
+          type: string # Changed from number/double for high precision
         error_code:
           type: string
           nullable: true
@@ -104,9 +100,8 @@ paths:
                   type: string
                   example: '98765432101234567890'
                 initial_deposit:
-                  type: number
-                  format: double
-                  default: 0
+                  type: string # Changed from number/double for high precision
+                  default: '0.00'
       responses:
         '201':
           description: Account created successfully
@@ -210,7 +205,7 @@ paths:
         '404':
           description: Account not found
 
-/accounts/{accountId}/debit:
+  /accounts/{accountId}/debit: # This path is now correctly nested under 'paths:'
     post:
       summary: Atomically debits a specific amount from an account balance.
       description: |
@@ -236,9 +231,8 @@ paths:
               type: object
               properties:
                 amount:
-                  type: number
-                  format: float
-                  example: 15000.00
+                  type: string # Changed from number/float for high precision
+                  example: '15000.00'
               required:
                 - amount
       responses:
@@ -269,25 +263,4 @@ paths:
                 type: object
                 properties:
                   is_eligible:
-                    type: boolean
-                    example: false
-                  error_code:
-                    type: string
-                    description: Specific code for the failure reason (e.g., INSUFFICIENT_FUNDS).
-                  message:
-                    type: string
-              examples:
-                InsufficientFunds:
-                  value:
-                    is_eligible: false
-                    error_code: INSUFFICIENT_FUNDS
-                    message: Transaction failed: Insufficient funds in account.
-                FrozenAccount:
-                  value:
-                    is_eligible: false
-                    error_code: FROZEN_ACCOUNT
-                    message: Transaction failed: Account is currently FROZEN and cannot be debited.
-        '404':
-          description: Account not found.
-        '500':
-          description: Internal server error.
+                    type: boolean # Added 'is_eligible'

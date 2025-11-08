@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: accounting-service
+  labels:
+    app: accounting-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: accounting-service
+  template:
+    metadata:
+      labels:
+        app: accounting-service
+    spec:
+      containers:
+        - name: accounting-service
+          image: accounting-service:latest # Use the image tagged locally
+          imagePullPolicy: Never # Minikube uses local images
+          ports:
+            - containerPort: 8080
+          envFrom:
+            # Environment variables from ConfigMap (DB_HOST, DB_NAME, DB_PORT)
+            - configMapRef:
+                name: accounting-config
+            # Sensitive secrets from Secret (DB_USER, DB_PASSWORD)
+            - secretRef:
+                name: accounting-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: accounting-service
+spec:
+  selector:
+    app: accounting-service
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+      nodePort: 30080 # Expose on a high port for minikube access
+  type: NodePort

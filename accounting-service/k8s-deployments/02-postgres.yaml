@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi # Request 1 Gigabyte of storage
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: accounting-db-deployment
+  labels:
+    app: accounting-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: accounting-db
+  template:
+    metadata:
+      labels:
+        app: accounting-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:14
+          ports:
+            - containerPort: 5432
+          env:
+            # Load non-sensitive config from ConfigMap
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: accounting-config
+                  key: DB_NAME
+            # Load sensitive credentials from Secret
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: accounting-secret
+                  key: DB_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: accounting-secret
+                  key: DB_PASSWORD
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgres-storage
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: accounting-db-service # This name is used as DB_HOST in the ConfigMap
+spec:
+  selector:
+    app: accounting-db
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+  type: ClusterIP # Internal service only
