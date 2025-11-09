@@ -49,17 +49,24 @@ spec:
                   name: accounting-secret
                   key: DB_PASSWORD
           volumeMounts:
+            # Mount the directory where the schema execution script lives
             - mountPath: /var/lib/postgresql/data
               name: postgres-storage
+            - mountPath: /docker-entrypoint-initdb.d/
+              name: postgres-initdb
       volumes:
         - name: postgres-storage
           persistentVolumeClaim:
             claimName: postgres-pvc
+        # Volume that loads the schema from the dedicated ConfigMap
+        - name: postgres-initdb
+          configMap:
+            name: postgres-initdb-config # This must match the name in 02a-schema-configmap.yaml
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: accounting-db-service # This name is used as DB_HOST in the ConfigMap
+  name: accounting-db-service # Used as DB_HOST in the Node.js application's ConfigMap
 spec:
   selector:
     app: accounting-db
