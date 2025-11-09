@@ -18,7 +18,7 @@ accounting-service/
 ├── api/
 │   └── openapi.yaml  # API Specification
 ├── database/
-│   └── schema.sql    # Database schema
+│   └── schema.sql    # Database schema 
 ├── src/
 │   ├── server.js     # Main Express App
 │   ├── accountRoutes.js # All API Logic
