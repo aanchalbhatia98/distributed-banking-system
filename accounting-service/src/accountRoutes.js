@@ -237,5 +237,61 @@ router.post('/accounts/:accountId/debit', async (req, res) => {
     }
 });
 
+// POST /accounts/:accountId/credit: Credit an account (Deposit Funds)
+router.post('/accounts/:accountId/credit', async (req, res) => {
+    const { accountId } = req.params;
+    const { amount } = req.body;
+
+    if (!uuidValidate(accountId)) {
+        return res.status(400).json({ error: 'Invalid account ID format.' });
+    }
+    
+    const creditAmount = parseFloat(amount);
+    if (isNaN(creditAmount) || creditAmount <= 0) {
+        return res.status(400).json({ error: 'Amount must be a positive number.' });
+    }
+
+    try {
+        // Atomic update for credit. Only check status, as balance constraint is not needed.
+        const result = await pool.query(
+            `UPDATE accounts 
+             SET balance = balance + $1, updated_at = NOW() 
+             WHERE account_id = $2 
+             AND status = 'ACTIVE' 
+             RETURNING *`,
+            [creditAmount, accountId]
+        );
+
+        if (result.rows.length === 0) {
+            // Check status to determine if account was not found or not active
+            const checkResult = await pool.query(
+                'SELECT status FROM accounts WHERE account_id = $1', 
+                [accountId]
+            );
+
+            if (checkResult.rows.length === 0) {
+                 return res.status(404).json({ error: 'Account not found.' });
+            }
+
+            const accountStatus = checkResult.rows[0].status.toUpperCase();
+            
+            // Rule: Account must be ACTIVE to receive funds
+            return res.status(403).json({ 
+                is_eligible: false,
+                error_code: `${accountStatus}_ACCOUNT`,
+                message: `Credit failed: Account is currently ${accountStatus} and cannot receive funds.` 
+            });
+        }
+        
+        console.log(`[EVENT] Publishing FundsCreditedEvent for Account ID: ${accountId}`);
+
+        res.json(formatAccountData(result.rows[0]));
+
+    } catch (error) {
+        console.error(`Error processing credit for ${accountId}:`, error.stack);
+        res.status(500).json({ error: 'Internal server error during credit process.' });
+    }
+});
+
 // FIX: Export the router as a named export
 export { router };

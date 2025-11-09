@@ -1,4 +1,4 @@
-openapi: 3.1.0
+openapi: 3.0.3
 info:
   title: Accounting Service API
   description: |
@@ -30,7 +30,8 @@ components:
           enum: [SAVINGS, CHECKING, LOAN]
           description: Type of the account.
         balance:
-          type: string # Changed from number/double for high precision (matches DECIMAL(19, 4) in DB)
+          type: number
+          format: double
           description: Current account balance. Stored as DECIMAL(19, 4) in DB.
         currency:
           type: string
@@ -40,7 +41,8 @@ components:
           enum: [ACTIVE, FROZEN, CLOSED]
           default: ACTIVE
         daily_transfer_limit:
-          type: string # Changed from number/double for high precision
+          type: number
+          format: double
           description: Maximum amount allowed for daily transfers (Business Rule).
         created_at:
           type: string
@@ -59,9 +61,11 @@ components:
           type: string
           enum: [ACTIVE, FROZEN, CLOSED]
         available_balance:
-          type: string # Changed from number/double for high precision
+          type: number
+          format: double
         daily_limit:
-          type: string # Changed from number/double for high precision
+          type: number
+          format: double
         error_code:
           type: string
           nullable: true
@@ -100,8 +104,9 @@ paths:
                   type: string
                   example: '98765432101234567890'
                 initial_deposit:
-                  type: string # Changed from number/double for high precision
-                  default: '0.00'
+                  type: number
+                  format: double
+                  default: 0
       responses:
         '201':
           description: Account created successfully
@@ -205,7 +210,7 @@ paths:
         '404':
           description: Account not found
 
-  /accounts/{accountId}/debit: # This path is now correctly nested under 'paths:'
+  /accounts/{accountId}/debit:
     post:
       summary: Atomically debits a specific amount from an account balance.
       description: |
@@ -231,8 +236,9 @@ paths:
               type: object
               properties:
                 amount:
-                  type: string # Changed from number/float for high precision
-                  example: '15000.00'
+                  type: number
+                  format: float
+                  example: 15000.00
               required:
                 - amount
       responses:
@@ -263,4 +269,100 @@ paths:
                 type: object
                 properties:
                   is_eligible:
-                    type: boolean # Added 'is_eligible'
+                    type: boolean
+                    example: false
+                  error_code:
+                    type: string
+                    description: Specific code for the failure reason (e.g., INSUFFICIENT_FUNDS).
+                  message:
+                    type: string
+              examples:
+                InsufficientFunds:
+                  value:
+                    is_eligible: false
+                    error_code: INSUFFICIENT_FUNDS
+                    message: Transaction failed - Insufficient funds in account.
+                FrozenAccount:
+                  value:
+                    is_eligible: false
+                    error_code: FROZEN_ACCOUNT
+                    message: Transaction failed - Account is currently FROZEN and cannot be debited.
+        '404':
+          description: Account not found.
+        '500':
+          description: Internal server error.
+
+  /accounts/{accountId}/credit:
+    post:
+      summary: Atomically credits a specific amount to an account balance.
+      description: |
+        Used by a Transaction or Deposit Service to place funds into an account.
+        Enforces a single business rule: Account status must be 'ACTIVE'.
+      operationId: creditAccount
+      tags:
+        - Funds Movement
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The unique ID of the account to credit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                  format: float
+                  example: 1000.00
+              required:
+                - amount
+      responses:
+        '200':
+          description: Credit successful. Returns the updated account details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+              example:
+                account_id: 767059cd-e802-4211-b1b0-35af750f4250
+                customer_id: 123e4567-e89b-12d3-a456-426614174000
+                account_number: '98765432101234567890'
+                account_type: SAVINGS
+                balance: '60000.5000' # Balance increased by 1000
+                currency: INR
+                status: ACTIVE
+                daily_transfer_limit: '200000.0000'
+                created_at: 2025-11-08T10:39:00.000Z
+                updated_at: 2025-11-08T10:47:00.000Z
+        '400':
+          description: Invalid input (e.g., non-positive amount, invalid UUID).
+        '403':
+          description: Forbidden - Business Rule Violation (Account Status).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  is_eligible:
+                    type: boolean
+                    example: false
+                  error_code:
+                    type: string
+                  message:
+                    type: string
+              examples:
+                FrozenAccountCredit:
+                  value:
+                    is_eligible: false
+                    error_code: FROZEN_ACCOUNT
+                    message: Credit failed - Account is currently FROZEN and cannot receive funds.
+        '404':
+          description: Account not found.
+        '500':
+          description: Internal server error.
