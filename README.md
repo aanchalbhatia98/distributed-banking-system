@@ -1,32 +1,22 @@
-🏦 Accounting Service Microservice
+Accounting Service Microservice
 This repository contains the Accounting Service, the foundational microservice for a distributed banking system. It is the Source of Truth for all customer account balances, status, and associated limits.
+
 Project Goals
 1.	Independent Persistence: Dedicated PostgreSQL database (using two tables: accounts and customer_read_model).
 2.	API Contract: Exposes synchronous REST endpoints for core operations (CRUD, Debit).
 3.	Business Logic: Enforces account status rules (e.g., frozen accounts cannot transact) and exposes limits.
 4.	Deployment: Containerized via Docker and configured for deployment on Minikube (Kubernetes).
-🚀 Local Setup & Dependencies
+
+Local Setup & Dependencies
 Prerequisites
-•	[Docker] (Docker Desktop)
-•	[Docker Compose]
-•	[Node.js] (v20+)
-•	[Minikube] and [kubectl] (Required for Kubernetes deployment only)
-•	An API client (e.g., Postman, Insomnia, or cURL)
-1. File Structure
-Ensure your project structure includes the following folders and key files:
-accounting-service/
-├── api/
-│   └── openapi.yaml  # API Specification
-├── database/
-│   └── schema.sql    # Database schema 
-├── src/
-│   ├── server.js     # Main Express App
-│   ├── accountRoutes.js # All API Logic
-│   └── db.js         # PostgreSQL Connection
-├── k8s-deployments/  # Kubernetes YAML files
-├── .env              # Local DB secrets
-└── docker-compose.yml
-2. Environment Variables
+[Docker] (Docker Desktop)
+[Docker Compose]
+[Node.js] (v20+)
+[Minikube] and [kubectl] (Required for Kubernetes deployment only)
+An API client (e.g., Postman, Insomnia, or cURL)
+
+
+1. Environment Variables
 Ensure your .env file is present in the root accounting-service/ directory:
 Plaintext
 DB_HOST=db
@@ -35,7 +25,7 @@ DB_USER=banking_user
 DB_PASSWORD=secret_password
 DB_NAME=banking_account_db
 PORT=8080
-3. Run Locally with Docker Compose
+2. Run Locally with Docker Compose
 These commands will start the application, the PostgreSQL database, the DB Viewer (Adminer), and the Swagger documentation viewer.
 Bash
 # 1. Start all services (Postgres, App, Adminer, Swagger UI)
@@ -45,7 +35,7 @@ Accounting App	http://localhost:8080	The primary API endpoint
 Adminer DB Viewer	http://localhost:8081	Web-based PostgreSQL viewer
 Swagger Docs	http://localhost:8082	Interactive API documentation
 ________________________________________
-🧪 Testing the API
+Testing the API
 All endpoints are prefixed with /api/v1.
 A. Create Account (POST /accounts)
 Creates a new account and returns the generated account_id (UUID).
@@ -69,7 +59,7 @@ curl -X POST http://localhost:8080/api/v1/accounts/YOUR_ACCOUNT_UUID/debit \
 -H "Content-Type: application/json" \
 -d '{"amount": 10000.00}'
 ________________________________________
-☁️ Minikube Deployment
+Minikube Deployment
 The service is configured for Kubernetes deployment using three key files that handle configuration, schema mounting, and deployment/service definitions.
 Deployment Sequence (PowerShell)
 1.	Start and Configure Docker Context:
